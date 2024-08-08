@@ -20,10 +20,13 @@ const Admin = () => {
 
     const fetchSubscribers = async () => {
         try {
+            setLoading(true);
             const { data } = await axios.get("/api/get-all-subscribers");
             setData(data.subscribers);
         } catch (e) {
             console.log(e);
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -60,13 +63,45 @@ const Admin = () => {
         }
     }
 
+    const addToList = async () => {
+        try {
+            setLoading(true);
+            if (details.name === "" || details.email === "" || details.contact === "") {
+                return toast.error("Please fill all the fields");
+            }
+            const { data } = await axios.post("/api/add-mail-list", details);
+            if (data.hasOwnProperty("success")) {
+                if (data.success) {
+                    toast.success("Added to list successfully");
+                    setIsEdit(false);
+                    fetchSubscribers();
+                    setDetails({
+                        name: "",
+                        email: "",
+                        contact: "",
+                    })
+                } else {
+                    if (data.hasOwnProperty("message")) {
+                        return toast.error(data.message);
+                    }
+                    toast.error("Failed to add to list");
+                }
+            }
+            console.log(data)
+        } catch (e) {
+            console.log(e);
+        } finally {
+            setLoading(false);
+        }
+    }
+
     useEffect(() => {
         fetchSubscribers();
     }, []);
     return (
         <div className='flex flex-col items-center m-10 gap-5'>
             <p>This is admin dashboard</p>
-            <Table className='w-[90%]'>
+            {loading ? <p>Loading</p> : <Table className='w-[90%]'>
                 <TableCaption>A list of all subscribers.</TableCaption>
                 <TableHeader>
                     <TableRow>
@@ -104,11 +139,15 @@ const Admin = () => {
                         <TableCell>{data.length}</TableCell>
                     </TableRow>
                 </TableFooter>
-            </Table>
+            </Table>}
+            <Button variant={'default'} onClick={() => {
+                setIsEdit(true);
+                setDetails({ email: '', name: '', contact: '' });
+            }}>Add new subscriber</Button>
             <Dialog open={isEdit} onOpenChange={() => setIsEdit(!isEdit)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Edit Subscriber</DialogTitle>
+                        <DialogTitle>{details?.id ? 'Edit' : 'Add'} Subscriber</DialogTitle>
                     </DialogHeader>
                     <div className="grid w-full items-center gap-4">
                         <div className="flex flex-col space-y-1.5">
@@ -126,9 +165,13 @@ const Admin = () => {
                     </div>
                     <DialogFooter className="flex justify-between">
                         <Button variant="outline">Cancel</Button>
-                        <Button onClick={updateSubscriber} >
+                        {details?.id ? <Button onClick={updateSubscriber} >
                             {loading ? "Updating..." : "Update"}
-                        </Button>
+                        </Button> :
+                            <Button onClick={addToList} >
+                                {loading ? "Adding..." : "Add to List"}
+                            </Button>
+                        }
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
